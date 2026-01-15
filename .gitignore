@@ -1,0 +1,94 @@
+# =========================================
+# macOS
+# =========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# =========================================
+# Xcode
+# =========================================
+build/
+DerivedData/
+*.xcarchive
+*.dSYM
+*.dSYM.zip
+*.ipa
+
+*.xcuserstate
+*.xcuserdata/
+*.xcuserdatad/
+*.xccheckout
+*.xcscmblueprint
+
+timeline.xctimeline
+playground.xcworkspace
+**/.swiftpm/xcode/package.xcworkspace/xcuserdata
+
+# =========================================
+# SwiftPM
+# =========================================
+.build/
+Packages/
+Package.pins
+Package.resolved
+.swiftpm/
+
+# =========================================
+# Logs / Debug
+# =========================================
+*.log
+*.tmp
+*.swp
+*.swo
+*.orig
+
+# =========================================
+# Instruments / Profiling
+# =========================================
+*.trace
+*.instrument
+*.instrdst
+
+# =========================================
+# Fastlane (if added later)
+# =========================================
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+fastlane/README.md
+
+# =========================================
+# CI / Secrets
+# =========================================
+.env
+.env.*
+*.pem
+*.p12
+*.mobileprovision
+
+# =========================================
+# Code Coverage
+# =========================================
+*.gcno
+*.gcda
+*.profraw
+
+# =========================================
+# Misc
+# =========================================
+.idea/
+.vscode/
+*.iml
