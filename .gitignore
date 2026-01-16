@@ -26,6 +26,12 @@ DerivedData/
 *.dSYM.zip
 *.ipa
 
+# Xcode
+*.xcworkspace/xcuserdata/
+*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
 *.xcuserstate
 *.xcuserdata/
 *.xcuserdatad/
@@ -35,6 +41,9 @@ DerivedData/
 timeline.xctimeline
 playground.xcworkspace
 **/.swiftpm/xcode/package.xcworkspace/xcuserdata
+*.playground/
+*.playground/*/timeline.xctimeline
+
 
 # =========================================
 # SwiftPM
@@ -60,6 +69,10 @@ Package.resolved
 *.trace
 *.instrument
 *.instrdst
+# Test / Simulator artifacts
+*.xccovarchive
+*.xctestplan
+
 
 # =========================================
 # Fastlane (if added later)
@@ -92,3 +105,7 @@ fastlane/README.md
 .idea/
 .vscode/
 *.iml
+
+.env
+.env.local
+.env.production
