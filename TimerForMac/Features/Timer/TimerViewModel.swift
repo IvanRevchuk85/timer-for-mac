@@ -14,10 +14,13 @@ final class TimerViewModel: ObservableObject {
     @Published private(set) var targetSeconds: TimeInterval = 25 * 60
 
     private let timerEngine: TimerEngineProtocol
+    private let settings: SettingsStore
     private var listenTask: Task<Void, Never>?
 
-    init(timerEngine: TimerEngineProtocol) {
+    init(timerEngine: TimerEngineProtocol, settings: SettingsStore) {
         self.timerEngine = timerEngine
+        self.settings = settings
+        self.targetSeconds = TimeInterval(max(1, settings.timerTargetMinutes) * 60)
         startListening()
     }
 
@@ -46,6 +49,7 @@ final class TimerViewModel: ObservableObject {
 
     func setTargetMinutes(_ minutes: Int) {
         let safe = max(1, minutes)
+        settings.timerTargetMinutes = safe
         targetSeconds = TimeInterval(safe * 60)
     }
 
@@ -63,3 +67,4 @@ final class TimerViewModel: ObservableObject {
         }
     }
 }
+

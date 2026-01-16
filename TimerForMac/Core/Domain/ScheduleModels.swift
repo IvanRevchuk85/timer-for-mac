@@ -7,8 +7,6 @@
 
 import Foundation
 
-import Foundation
-
 enum SegmentKind: String, Codable, CaseIterable {
     case work
     case breakTime
