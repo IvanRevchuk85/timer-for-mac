@@ -1,10 +1,3 @@
-//
-//  UserDefaultsStore.swift
-//  TimerForMac
-//
-//  Created by Ivan Revchuk on 15.01.2026.
-//
-
 import Foundation
 
 // MARK: - UserDefaultsStoring
@@ -28,11 +21,29 @@ final class UserDefaultsStore: UserDefaultsStoring {
         self.defaults = defaults
     }
 
-    func integer(forKey key: String) -> Int { defaults.integer(forKey: key) }
-    func bool(forKey key: String) -> Bool { defaults.bool(forKey: key) }
-    func object(forKey key: String) -> Any? { defaults.object(forKey: key) }
+    // Read
+    func integer(forKey key: String) -> Int {
+        defaults.integer(forKey: key)
+    }
 
-    func set(_ value: Int, forKey key: String) { defaults.set(value, forKey: key) }
-    func set(_ value: Bool, forKey key: String) { defaults.set(value, forKey: key) }
-    func removeObject(forKey key: String) { defaults.removeObject(forKey: key) }
+    func bool(forKey key: String) -> Bool {
+        defaults.bool(forKey: key)
+    }
+
+    func object(forKey key: String) -> Any? {
+        defaults.object(forKey: key)
+    }
+
+    // Write
+    func set(_ value: Int, forKey key: String) {
+        defaults.set(value, forKey: key)
+    }
+
+    func set(_ value: Bool, forKey key: String) {
+        defaults.set(value, forKey: key)
+    }
+
+    func removeObject(forKey key: String) {
+        defaults.removeObject(forKey: key)
+    }
 }
