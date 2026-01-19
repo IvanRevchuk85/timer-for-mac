@@ -8,13 +8,28 @@
 import SwiftUI
 
 struct TimerView: View {
-    @StateObject var viewModel: TimerViewModel
+    @StateObject private var viewModel: TimerViewModel
+    @ObservedObject private var dayPlanViewModel: DayPlanViewModel
+
     @State private var targetMinutes: Int = 25
+
+    init(viewModel: TimerViewModel, dayPlanViewModel: DayPlanViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+        self.dayPlanViewModel = dayPlanViewModel
+    }
 
     var body: some View {
         VStack(spacing: 16) {
-            Text(titleText)
-                .font(.title2)
+            HStack {
+                Text(titleText)
+                    .font(.title2)
+
+                Spacer()
+
+                NavigationLink("Day Plan") {
+                    DayPlanView(viewModel: dayPlanViewModel)
+                }
+            }
 
             Text(timeText)
                 .font(.system(size: 48, weight: .semibold, design: .rounded))
