@@ -50,8 +50,10 @@ final class AppContainer {
     }
 
     private static func makeDayPlanFileURL() -> URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let folder = appSupport.appendingPathComponent("TimerForMac", isDirectory: true)
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let baseURL = appSupport ?? FileManager.default.temporaryDirectory
+
+        let folder = baseURL.appendingPathComponent("TimerForMac", isDirectory: true)
         return folder.appendingPathComponent("day_plan.json")
     }
 }
