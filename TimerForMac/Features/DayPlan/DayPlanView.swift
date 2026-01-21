@@ -6,22 +6,42 @@
 //
 
 import SwiftUI
+import Combine
 
 struct DayPlanView: View {
     @ObservedObject var viewModel: DayPlanViewModel
 
+    @State private var editorSession: EditorSession?
+
+    private let ticker = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
+
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1.0)) { context in
-            content
-                .onAppear {
-                    viewModel.refresh()
-                    viewModel.updatePosition()
+        content
+            .navigationTitle("Day Plan")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(viewModel.plan.segments.isEmpty ? "Create" : "Edit") {
+                        openEditor()
+                    }
                 }
-                .onChange(of: context.date, initial: false) { _, _ in
-                    viewModel.updatePosition()
-                }
-        }
-        .navigationTitle("Day Plan")
+            }
+            .task {
+                viewModel.refresh()
+                viewModel.updatePosition()
+            }
+            .onReceive(ticker) { _ in
+                guard editorSession == nil else { return }
+                viewModel.updatePosition()
+            }
+            .sheet(item: $editorSession, onDismiss: { editorSession = nil }) { session in
+                DayPlanEditorView(
+                    viewModel: session.viewModel,
+                    onSaved: {
+                        viewModel.refresh()
+                        viewModel.updatePosition()
+                    }
+                )
+            }
     }
 
     @ViewBuilder
@@ -39,6 +59,11 @@ struct DayPlanView: View {
                 }
             }
         }
+    }
+
+    private func openEditor() {
+        guard editorSession == nil else { return }
+        editorSession = EditorSession(viewModel: viewModel.makeEditorViewModel())
     }
 
     private func segmentRow(index: Int, segment: PlanSegment) -> some View {
@@ -110,4 +135,9 @@ struct DayPlanView: View {
 
         return formatter.string(from: safe) ?? "0:00"
     }
+}
+
+private struct EditorSession: Identifiable {
+    let id = UUID()
+    let viewModel: DayPlanEditorViewModel
 }
