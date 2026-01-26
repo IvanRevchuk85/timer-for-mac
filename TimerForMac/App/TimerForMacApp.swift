@@ -14,6 +14,10 @@ struct TimerForMacApp: App {
     var body: some Scene {
         WindowGroup {
             container.makeTimerRootView()
+                .task {
+                    // Safe: start is idempotent (guarded in AppContainer).
+                    container.startAutoScheduleIfNeeded()
+                }
         }
     }
 }

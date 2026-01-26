@@ -15,5 +15,6 @@ enum AppStorageKeys {
     static let timerTargetMinutes = "timerTargetMinutes"
     static let uiMinimalMode = "uiMinimalMode"
     static let uiPreventSleep = "uiPreventSleep"
-}
 
+    static let dailySchedule = "dailySchedule"
+}
