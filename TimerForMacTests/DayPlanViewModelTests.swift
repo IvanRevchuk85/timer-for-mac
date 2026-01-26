@@ -1,6 +1,6 @@
 //
 //  DayPlanViewModelTests.swift
-//  TimerForMac
+//  TimerForMacTests
 //
 //  Created by Ivan Revchuk on 19.01.2026.
 //
@@ -21,14 +21,15 @@ final class DayPlanViewModelTests: XCTestCase {
             self.planToLoad = planToLoad
         }
 
-        func load() -> DayPlan {
+        func load(completion: @escaping (DayPlan) -> Void) {
             loadCalls += 1
-            return planToLoad
+            completion(planToLoad)
         }
 
-        func save(_ plan: DayPlan) {
+        func save(_ plan: DayPlan, completion: @escaping (Result<Void, Error>) -> Void) {
             savedPlans.append(plan)
             planToLoad = plan
+            completion(.success(()))
         }
     }
 

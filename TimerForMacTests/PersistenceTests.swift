@@ -63,6 +63,22 @@ final class PersistenceTests: XCTestCase {
         XCTAssertFalse(store.bool(forKey: "test.bool"))
     }
 
+    func testUserDefaultsStore_SetAndReadData() {
+        let suiteName = "TimerForMacTests.UserDefaults.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create UserDefaults suite.")
+            return
+        }
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = UserDefaultsStore(defaults: defaults)
+
+        let data = Data([0x01, 0x02, 0x03])
+        store.set(data, forKey: "test.data")
+
+        XCTAssertEqual(store.data(forKey: "test.data"), data)
+    }
+
     // MARK: - UserDefaultsSettingsStore
 
     func testSettingsStore_DefaultsWhenKeysMissing() {
@@ -84,6 +100,9 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(settings.timerTargetMinutes, 60)
         XCTAssertFalse(settings.isMinimalModeEnabled)
         XCTAssertFalse(settings.isPreventSleepEnabled)
+
+        XCTAssertFalse(settings.dailySchedule.isEnabled)
+        XCTAssertTrue(settings.dailySchedule.weekdays.isEmpty)
     }
 
     func testSettingsStore_BoolFalseIsNotTreatedAsMissing() {
@@ -140,6 +159,85 @@ final class PersistenceTests: XCTestCase {
         }
     }
 
+    func testSettingsStore_DailySchedule_DefaultWhenMissing() {
+        let suiteName = "TimerForMacTests.Settings.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create UserDefaults suite.")
+            return
+        }
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = UserDefaultsStore(defaults: defaults)
+
+        let defaultSchedule = DailySchedule(
+            startTime: LocalTime(hour: 9, minute: 0)!,
+            stopTime: LocalTime(hour: 18, minute: 0)!,
+            weekdays: [],
+            isEnabled: false,
+            timeZoneMode: .system,
+            dstPolicy: .default
+        )
+
+        let settings = UserDefaultsSettingsStore(
+            store: store,
+            defaultTimerTargetMinutes: 60,
+            defaultMinimalMode: false,
+            defaultPreventSleep: false,
+            defaultDailySchedule: defaultSchedule
+        )
+
+        XCTAssertEqual(settings.dailySchedule, defaultSchedule)
+    }
+
+    func testSettingsStore_DailySchedule_PersistsAcrossInstances() {
+        let suiteName = "TimerForMacTests.Settings.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create UserDefaults suite.")
+            return
+        }
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let defaultSchedule = DailySchedule(
+            startTime: LocalTime(hour: 9, minute: 0)!,
+            stopTime: LocalTime(hour: 18, minute: 0)!,
+            weekdays: [],
+            isEnabled: false,
+            timeZoneMode: .system,
+            dstPolicy: .default
+        )
+
+        let schedule = DailySchedule(
+            startTime: LocalTime(hour: 8, minute: 30)!,
+            stopTime: LocalTime(hour: 17, minute: 15)!,
+            weekdays: [.monday, .wednesday, .friday],
+            isEnabled: true,
+            timeZoneMode: .fixed(identifier: "Europe/Kyiv"),
+            dstPolicy: .init(missingTime: .nextTime, repeatedTime: .last)
+        )
+
+        do {
+            let store1 = UserDefaultsStore(defaults: defaults)
+            let settings1 = UserDefaultsSettingsStore(
+                store: store1,
+                defaultTimerTargetMinutes: 60,
+                defaultDailySchedule: defaultSchedule
+            )
+
+            settings1.dailySchedule = schedule
+        }
+
+        do {
+            let store2 = UserDefaultsStore(defaults: defaults)
+            let settings2 = UserDefaultsSettingsStore(
+                store: store2,
+                defaultTimerTargetMinutes: 60,
+                defaultDailySchedule: defaultSchedule
+            )
+
+            XCTAssertEqual(settings2.dailySchedule, schedule)
+        }
+    }
+
     // MARK: - DayPlanRepository
 
     func testDayPlanRepository_WhenFileMissing_ReturnsDefaultPlan() {
@@ -148,6 +246,7 @@ final class PersistenceTests: XCTestCase {
 
         // Ensure missing
         try? FileManager.default.removeItem(at: fileURL)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
 
         let repo = DayPlanRepository(
             fileStore: JSONFileStore(),
@@ -155,8 +254,14 @@ final class PersistenceTests: XCTestCase {
             defaultPlanProvider: { DayPlan(segments: []) }
         )
 
-        let loaded = repo.load()
-        XCTAssertEqual(loaded.segments.count, 0)
+        let exp = expectation(description: "Load returns default plan when file is missing")
+
+        repo.load { loaded in
+            XCTAssertEqual(loaded.segments.count, 0)
+            exp.fulfill()
+        }
+
+        wait(for: [exp], timeout: 1.0)
     }
 
     func testDayPlanRepository_SaveAndLoad_Roundtrip() {
@@ -176,9 +281,21 @@ final class PersistenceTests: XCTestCase {
             PlanSegment(kind: .lunch, title: "Lunch", duration: 30)
         ])
 
-        repo.save(plan)
-        let loaded = repo.load()
+        let exp = expectation(description: "Save then load returns the same plan")
 
-        XCTAssertEqual(loaded, plan)
+        repo.save(plan) { result in
+            switch result {
+            case .success:
+                repo.load { loaded in
+                    XCTAssertEqual(loaded, plan)
+                    exp.fulfill()
+                }
+            case .failure(let error):
+                XCTFail("Save failed: \(error)")
+                exp.fulfill()
+            }
+        }
+
+        wait(for: [exp], timeout: 1.0)
     }
 }
