@@ -11,7 +11,12 @@ struct TimerView: View {
     @StateObject private var viewModel: TimerViewModel
     @ObservedObject private var dayPlanViewModel: DayPlanViewModel
 
-    @State private var targetMinutes: Int = 25
+    private var targetMinutesBinding: Binding<Int> {
+        Binding(
+            get: { Int(viewModel.targetSeconds / 60) },
+            set: { viewModel.setTargetMinutes($0) }
+        )
+    }
 
     init(viewModel: TimerViewModel, dayPlanViewModel: DayPlanViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -51,21 +56,15 @@ struct TimerView: View {
 
             HStack(spacing: 8) {
                 Text("Minutes:")
-                Stepper(value: $targetMinutes, in: 1...240, step: 1) {
-                    Text("\(targetMinutes)")
+                Stepper(value: targetMinutesBinding, in: 1...240, step: 1) {
+                    Text("\(targetMinutesBinding.wrappedValue)")
                         .frame(minWidth: 40, alignment: .leading)
                 }
                 .disabled(!viewModel.isEditingTargetAllowed)
-                .onChange(of: targetMinutes) { _, newValue in
-                    viewModel.setTargetMinutes(newValue)
-                }
             }
         }
         .padding(20)
         .frame(minWidth: 420, minHeight: 260)
-        .onAppear {
-            targetMinutes = Int(viewModel.targetSeconds / 60)
-        }
     }
 
     private var titleText: String {
@@ -82,9 +81,13 @@ struct TimerView: View {
         switch viewModel.snapshot.status {
         case .idle, .finished:
             seconds = Int(viewModel.targetSeconds.rounded(.down))
+
         case .running, .paused:
-            let value = viewModel.snapshot.remaining ?? viewModel.snapshot.elapsed
-            seconds = Int(value.rounded(.down))
+            if let remaining = viewModel.snapshot.remaining {
+                seconds = Int(remaining.rounded(.down))
+            } else {
+                seconds = Int(viewModel.snapshot.elapsed.rounded(.down))
+            }
         }
         return format(seconds: seconds)
     }
@@ -95,4 +98,3 @@ struct TimerView: View {
         return String(format: "%02d:%02d", m, s)
     }
 }
-

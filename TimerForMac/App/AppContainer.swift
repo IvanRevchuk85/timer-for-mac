@@ -16,12 +16,15 @@ final class AppContainer {
     private let settingsStore: SettingsStore
     private let dayPlanRepository: DayPlanRepositoryProtocol
 
-    // MARK: - AutoSchedule
+    // MARK: - Coordinators
 
     private let dailyScheduleService = DailyScheduleService()
 
     // Coordinator is created on MainActor (because it is @MainActor in your implementation).
     @MainActor private var autoStartStopCoordinator: DailyAutoStartStopCoordinator?
+
+    // Keeps main bindings alive (Day Plan -> Timer).
+    @MainActor private var mainTimerCoordinator: MainTimerCoordinator?
 
     // Guards against multiple starts when SwiftUI recreates views / tasks.
     @MainActor private var didStartAutoSchedule = false
@@ -32,10 +35,7 @@ final class AppContainer {
         self.timerEngine = TimerEngine()
 
         let defaults = UserDefaultsStore()
-        self.settingsStore = UserDefaultsSettingsStore(
-            store: defaults,
-            defaultTimerTargetMinutes: 25
-        )
+        self.settingsStore = UserDefaultsSettingsStore(store: defaults)
 
         let fileURL = Self.makeDayPlanFileURL()
         self.dayPlanRepository = DayPlanRepository(
@@ -53,8 +53,18 @@ final class AppContainer {
 
         let dayPlanVM = DayPlanViewModel(
             repository: dayPlanRepository,
-            elapsedProvider: Self.elapsedSinceStartOfToday
+            elapsedProvider: Self.elapsedSinceStartOfToday,
+            settings: settingsStore
         )
+
+        // Keep coordinator alive for the lifetime of the app container.
+        if mainTimerCoordinator == nil {
+            mainTimerCoordinator = MainTimerCoordinator(
+                timerViewModel: timerVM,
+                dayPlanViewModel: dayPlanVM,
+                settings: settingsStore
+            )
+        }
 
         return NavigationStack {
             TimerView(viewModel: timerVM, dayPlanViewModel: dayPlanVM)

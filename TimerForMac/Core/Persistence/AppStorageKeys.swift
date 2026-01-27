@@ -17,4 +17,5 @@ enum AppStorageKeys {
     static let uiPreventSleep = "uiPreventSleep"
 
     static let dailySchedule = "dailySchedule"
+    static let selectedDayPlanID = "selectedDayPlanID"
 }
