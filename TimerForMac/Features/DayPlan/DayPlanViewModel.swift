@@ -15,13 +15,16 @@ final class DayPlanViewModel: ObservableObject {
 
     private let repository: DayPlanRepositoryProtocol
     private let elapsedProvider: @Sendable () -> TimeInterval
+    private let settings: SettingsStore
 
     init(
         repository: DayPlanRepositoryProtocol,
-        elapsedProvider: @escaping @Sendable () -> TimeInterval
+        elapsedProvider: @escaping @Sendable () -> TimeInterval,
+        settings: SettingsStore
     ) {
         self.repository = repository
         self.elapsedProvider = elapsedProvider
+        self.settings = settings
         refresh()
     }
 
@@ -29,6 +32,11 @@ final class DayPlanViewModel: ObservableObject {
         repository.load { [weak self] loaded in
             guard let self else { return }
             self.plan = loaded
+
+            if self.settings.selectedDayPlanID == nil {
+                self.settings.selectedDayPlanID = loaded.id
+            }
+
             self.updatePosition()
         }
     }

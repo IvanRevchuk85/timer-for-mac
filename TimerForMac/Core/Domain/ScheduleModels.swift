@@ -20,7 +20,6 @@ struct PlanSegment: Identifiable, Codable, Equatable, Sendable {
     var title: String
 
     /// Duration in seconds.
-    /// RU: Длительность в секундах.
     var duration: TimeInterval
 
     init(id: UUID = UUID(), kind: SegmentKind, title: String, duration: TimeInterval) {
@@ -31,23 +30,42 @@ struct PlanSegment: Identifiable, Codable, Equatable, Sendable {
     }
 
     /// Normalized title fallback if empty.
-    /// RU: Заголовок по умолчанию, если пустой.
     var resolvedTitle: String {
         title.isEmpty ? kind.defaultTitle : title
     }
 }
 
 struct DayPlan: Codable, Equatable, Sendable {
+    var id: UUID
     var segments: [PlanSegment]
 
-    init(segments: [PlanSegment]) {
+    init(id: UUID = UUID(), segments: [PlanSegment]) {
+        self.id = id
         self.segments = segments
     }
 
     /// Total duration in seconds.
-    /// RU: Общая длительность в секундах.
     var totalDuration: TimeInterval {
         segments.reduce(0) { $0 + max(0, $1.duration) }
+    }
+
+    // MARK: - Codable migration (backward compatible)
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case segments
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.segments = try container.decode([PlanSegment].self, forKey: .segments)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(segments, forKey: .segments)
     }
 }
 

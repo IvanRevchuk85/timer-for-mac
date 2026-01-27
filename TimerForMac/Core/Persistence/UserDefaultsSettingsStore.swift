@@ -15,6 +15,8 @@ protocol SettingsStore: AnyObject {
     var isPreventSleepEnabled: Bool { get set }
 
     var dailySchedule: DailySchedule { get set }
+
+    var selectedDayPlanID: UUID? { get set }
 }
 
 // MARK: - UserDefaultsSettingsStore
@@ -56,6 +58,25 @@ final class UserDefaultsSettingsStore: SettingsStore {
         }
     }
 
+    // MARK: Selected Day Plan
+
+    var selectedDayPlanID: UUID? {
+        get {
+            guard let raw = store.string(forKey: AppStorageKeys.selectedDayPlanID),
+                  let id = UUID(uuidString: raw) else {
+                return nil
+            }
+            return id
+        }
+        set {
+            if let newValue {
+                store.set(newValue.uuidString, forKey: AppStorageKeys.selectedDayPlanID)
+            } else {
+                store.removeObject(forKey: AppStorageKeys.selectedDayPlanID)
+            }
+        }
+    }
+
     // MARK: UI
 
     var isMinimalModeEnabled: Bool {
@@ -93,7 +114,6 @@ final class UserDefaultsSettingsStore: SettingsStore {
             do {
                 return try jsonDecoder.decode(DailySchedule.self, from: data)
             } catch {
-                // If stored data is corrupted or schema changed, fall back safely.
                 return defaultDailySchedule
             }
         }
@@ -102,7 +122,6 @@ final class UserDefaultsSettingsStore: SettingsStore {
                 let data = try jsonEncoder.encode(newValue)
                 store.set(data, forKey: AppStorageKeys.dailySchedule)
             } catch {
-                // Do not write corrupted/partial data.
                 // Intentionally ignore, keeping the previous stored value.
             }
         }
@@ -111,7 +130,6 @@ final class UserDefaultsSettingsStore: SettingsStore {
     // MARK: Helpers
 
     private func hasValue(forKey key: String) -> Bool {
-        // `object(forKey:)` distinguishes "missing" from stored `false`.
         store.object(forKey: key) != nil
     }
 
