@@ -18,4 +18,5 @@ enum AppStorageKeys {
 
     static let dailySchedule = "dailySchedule"
     static let selectedDayPlanID = "selectedDayPlanID"
+    static let notificationSettings = "notificationSettings"
 }

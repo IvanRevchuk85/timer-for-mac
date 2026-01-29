@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import UserNotifications
 
 final class AppContainer {
 
@@ -15,23 +16,25 @@ final class AppContainer {
     private let timerEngine: TimerEngineProtocol
     private let settingsStore: SettingsStore
     private let dayPlanRepository: DayPlanRepositoryProtocol
+    private let notificationService: NotificationService
+    private let foregroundNotificationPresenter = ForegroundNotificationPresenter()
 
     // MARK: - Coordinators
 
     private let dailyScheduleService = DailyScheduleService()
 
-    // Coordinator is created on MainActor (because it is @MainActor in your implementation).
     @MainActor private var autoStartStopCoordinator: DailyAutoStartStopCoordinator?
-
-    // Keeps main bindings alive (Day Plan -> Timer).
     @MainActor private var mainTimerCoordinator: MainTimerCoordinator?
+    @MainActor private var notificationsCoordinator: TimerNotificationsCoordinator?
 
-    // Guards against multiple starts when SwiftUI recreates views / tasks.
     @MainActor private var didStartAutoSchedule = false
 
     // MARK: - Init
 
+    @MainActor
     init() {
+        UNUserNotificationCenter.current().delegate = foregroundNotificationPresenter
+
         self.timerEngine = TimerEngine()
 
         let defaults = UserDefaultsStore()
@@ -43,6 +46,8 @@ final class AppContainer {
             fileURL: fileURL,
             defaultPlanProvider: { DayPlan(segments: []) }
         )
+
+        self.notificationService = NotificationService()
     }
 
     // MARK: - Composition Root
@@ -57,7 +62,6 @@ final class AppContainer {
             settings: settingsStore
         )
 
-        // Keep coordinator alive for the lifetime of the app container.
         if mainTimerCoordinator == nil {
             mainTimerCoordinator = MainTimerCoordinator(
                 timerViewModel: timerVM,
@@ -66,14 +70,32 @@ final class AppContainer {
             )
         }
 
+        if notificationsCoordinator == nil {
+            notificationsCoordinator = TimerNotificationsCoordinator(
+                timerEngine: timerEngine,
+                notificationService: notificationService,
+                planProvider: { dayPlanVM.plan },
+                settingsProvider: { self.settingsStore.notificationSettings }
+            )
+            notificationsCoordinator?.start()
+        }
+
         return NavigationStack {
             TimerView(viewModel: timerVM, dayPlanViewModel: dayPlanVM)
         }
     }
 
+    @MainActor
+    func makeSettingsView() -> some View {
+        let vm = SettingsViewModel(
+            settingsStore: settingsStore,
+            notificationService: notificationService
+        )
+        return SettingsView(viewModel: vm)
+    }
+
     // MARK: - AutoSchedule Public API
 
-    /// Starts daily auto start/stop exactly once for the app lifetime.
     @MainActor
     func startAutoScheduleIfNeeded() {
         guard didStartAutoSchedule == false else { return }
@@ -90,7 +112,6 @@ final class AppContainer {
         autoStartStopCoordinator?.start()
     }
 
-    /// Optional: lets you manually stop auto schedule (useful for future lifecycle hooks / tests).
     @MainActor
     func stopAutoSchedule() {
         autoStartStopCoordinator?.stop()
@@ -99,6 +120,7 @@ final class AppContainer {
 
     // MARK: - Helpers
 
+    /// Must stay non-isolated to avoid `@MainActor () -> TimeInterval` type leaks into domain VMs.
     private static func elapsedSinceStartOfToday() -> TimeInterval {
         let now = Date()
         let start = Calendar.current.startOfDay(for: now)
@@ -111,11 +133,9 @@ final class AppContainer {
 
         let folder = baseURL.appendingPathComponent("TimerForMac", isDirectory: true)
 
-        // Ensure directory exists to avoid file write failures.
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         } catch {
-            // Fallback to temp if AppSupport is not writable for any reason.
             let tmpFolder = FileManager.default.temporaryDirectory.appendingPathComponent("TimerForMac", isDirectory: true)
             try? FileManager.default.createDirectory(at: tmpFolder, withIntermediateDirectories: true)
             return tmpFolder.appendingPathComponent("day_plan.json")

@@ -37,6 +37,24 @@ final class DayPlanViewModelTests: XCTestCase {
         var value: TimeInterval
         init(_ value: TimeInterval) { self.value = value }
     }
+    
+    private final class MockSettingsStore: SettingsStore {
+        var selectedDayPlanID: UUID?
+        var notificationSettings: NotificationSettings = .default
+
+        var timerTargetMinutes: Int = 25
+        var isMinimalModeEnabled: Bool = false
+        var isPreventSleepEnabled: Bool = false
+        var dailySchedule: DailySchedule = DailySchedule(
+            startTime: LocalTime(hour: 9, minute: 0)!,
+            stopTime: LocalTime(hour: 18, minute: 0)!,
+            weekdays: [],
+            isEnabled: false,
+            timeZoneMode: .system,
+            dstPolicy: .default
+        )
+    }
+
 
     // MARK: - Tests
 
@@ -49,7 +67,9 @@ final class DayPlanViewModelTests: XCTestCase {
         let repo = MockDayPlanRepository(planToLoad: plan)
 
         let elapsed = ElapsedBox(70) // 60 sec work + 10 sec into break
-        let vm = DayPlanViewModel(repository: repo, elapsedProvider: { elapsed.value })
+        let settings = MockSettingsStore()
+        let vm = DayPlanViewModel(repository: repo, elapsedProvider: { elapsed.value }, settings: settings)
+
 
         XCTAssertEqual(repo.loadCalls, 1)
         XCTAssertEqual(vm.plan, plan)
@@ -70,7 +90,9 @@ final class DayPlanViewModelTests: XCTestCase {
         let repo = MockDayPlanRepository(planToLoad: plan)
 
         let elapsed = ElapsedBox(0)
-        let vm = DayPlanViewModel(repository: repo, elapsedProvider: { elapsed.value })
+        let settings = MockSettingsStore()
+        let vm = DayPlanViewModel(repository: repo, elapsedProvider: { elapsed.value }, settings: settings)
+
 
         let initial = try XCTUnwrap(vm.currentPosition)
         XCTAssertEqual(initial.segmentIndex, 0)
@@ -96,7 +118,9 @@ final class DayPlanViewModelTests: XCTestCase {
 
         let repo = MockDayPlanRepository(planToLoad: planA)
         let elapsed = ElapsedBox(60)
-        let vm = DayPlanViewModel(repository: repo, elapsedProvider: { elapsed.value })
+        let settings = MockSettingsStore()
+        let vm = DayPlanViewModel(repository: repo, elapsedProvider: { elapsed.value }, settings: settings)
+
 
         XCTAssertEqual(vm.plan, planA)
         XCTAssertEqual(try XCTUnwrap(vm.currentPosition).segment.title, "A")
@@ -113,7 +137,9 @@ final class DayPlanViewModelTests: XCTestCase {
     @MainActor
     func testEmptyPlan_PositionIsNil() {
         let repo = MockDayPlanRepository(planToLoad: DayPlan(segments: []))
-        let vm = DayPlanViewModel(repository: repo, elapsedProvider: { 0 })
+        let settings = MockSettingsStore()
+        let vm = DayPlanViewModel(repository: repo, elapsedProvider: { 0 }, settings: settings)
+
         XCTAssertNil(vm.currentPosition)
     }
 
@@ -124,7 +150,9 @@ final class DayPlanViewModelTests: XCTestCase {
         ])
         let repo = MockDayPlanRepository(planToLoad: plan)
 
-        let vm = DayPlanViewModel(repository: repo, elapsedProvider: { -999 })
+        let settings = MockSettingsStore()
+        let vm = DayPlanViewModel(repository: repo, elapsedProvider: { -999 }, settings: settings)
+
 
         let position = try XCTUnwrap(vm.currentPosition)
         XCTAssertEqual(position.segmentIndex, 0)

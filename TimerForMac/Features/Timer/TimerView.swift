@@ -7,21 +7,23 @@
 
 import SwiftUI
 
+// MARK: - TimerView
+
 struct TimerView: View {
+
+    // MARK: - State
+
     @StateObject private var viewModel: TimerViewModel
     @ObservedObject private var dayPlanViewModel: DayPlanViewModel
 
-    private var targetMinutesBinding: Binding<Int> {
-        Binding(
-            get: { Int(viewModel.targetSeconds / 60) },
-            set: { viewModel.setTargetMinutes($0) }
-        )
-    }
+    // MARK: - Init
 
     init(viewModel: TimerViewModel, dayPlanViewModel: DayPlanViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.dayPlanViewModel = dayPlanViewModel
     }
+
+    // MARK: - Body
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -33,7 +35,7 @@ struct TimerView: View {
         .frame(minWidth: 520, minHeight: 320)
     }
 
-    // MARK: - Layout
+    // MARK: - Header
 
     private var headerLeft: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -51,17 +53,30 @@ struct TimerView: View {
 
     private var headerRight: some View {
         VStack {
-            HStack {
+            HStack(spacing: 10) {
                 Spacer()
+
+                // Opens the SwiftUI Settings scene registered in TimerForMacApp.
+                SettingsLink {
+                    Image(systemName: "gearshape")
+                        .imageScale(.medium)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+
                 NavigationLink("Day Plan") {
                     DayPlanView(viewModel: dayPlanViewModel)
                 }
             }
+
             Spacer()
         }
         .padding(.top, 8)
         .padding(.trailing, 8)
     }
+
+    // MARK: - Center Content
 
     private var centerContent: some View {
         VStack(spacing: 10) {
@@ -82,6 +97,8 @@ struct TimerView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    // MARK: - Controls
+
     private var controlsSection: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
@@ -101,6 +118,7 @@ struct TimerView: View {
             if shouldShowManualMinutesControl {
                 HStack(spacing: 8) {
                     Text("Minutes:")
+
                     Stepper(value: targetMinutesBinding, in: 1...240, step: 1) {
                         Text("\(targetMinutesBinding.wrappedValue)")
                             .frame(minWidth: 40, alignment: .leading)
@@ -111,7 +129,16 @@ struct TimerView: View {
         }
     }
 
-    // MARK: - UI State
+    // MARK: - Bindings
+
+    private var targetMinutesBinding: Binding<Int> {
+        Binding(
+            get: { Int(viewModel.targetSeconds / 60) },
+            set: { viewModel.setTargetMinutes($0) }
+        )
+    }
+
+    // MARK: - Derived UI State
 
     private var titleText: String {
         switch viewModel.snapshot.status {
@@ -154,14 +181,16 @@ struct TimerView: View {
     }
 
     private var shouldShowManualMinutesControl: Bool {
+        // If there is no day plan (or the plan is empty), allow manual minutes editing.
         dayPlanViewModel.plan.totalDuration <= 0
     }
 
     // MARK: - Formatting
 
     private func format(seconds: Int) -> String {
-        let m = max(0, seconds) / 60
-        let s = max(0, seconds) % 60
+        let value = max(0, seconds)
+        let m = value / 60
+        let s = value % 60
         return String(format: "%02d:%02d", m, s)
     }
 }

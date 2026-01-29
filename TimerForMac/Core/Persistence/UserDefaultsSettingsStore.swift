@@ -17,6 +17,7 @@ protocol SettingsStore: AnyObject {
     var dailySchedule: DailySchedule { get set }
 
     var selectedDayPlanID: UUID? { get set }
+    var notificationSettings: NotificationSettings { get set }
 }
 
 // MARK: - UserDefaultsSettingsStore
@@ -31,19 +32,22 @@ final class UserDefaultsSettingsStore: SettingsStore {
 
     private let jsonEncoder = JSONEncoder()
     private let jsonDecoder = JSONDecoder()
+    private let defaultNotificationSettings: NotificationSettings
 
     init(
         store: UserDefaultsStoring,
         defaultTimerTargetMinutes: Int = 60,
         defaultMinimalMode: Bool = false,
         defaultPreventSleep: Bool = false,
-        defaultDailySchedule: DailySchedule = UserDefaultsSettingsStore.makeDefaultDailySchedule()
+        defaultDailySchedule: DailySchedule = UserDefaultsSettingsStore.makeDefaultDailySchedule(),
+        defaultNotificationSettings: NotificationSettings = .default
     ) {
         self.store = store
         self.defaultTimerTargetMinutes = defaultTimerTargetMinutes
         self.defaultMinimalMode = defaultMinimalMode
         self.defaultPreventSleep = defaultPreventSleep
         self.defaultDailySchedule = defaultDailySchedule
+        self.defaultNotificationSettings = defaultNotificationSettings
     }
 
     // MARK: Timer
@@ -126,6 +130,31 @@ final class UserDefaultsSettingsStore: SettingsStore {
             }
         }
     }
+    
+    // MARK: Notifications
+    
+    var notificationSettings: NotificationSettings {
+        get {
+            guard let data = store.data(forKey: AppStorageKeys.notificationSettings) else {
+                return defaultNotificationSettings
+            }
+
+            do {
+                return try jsonDecoder.decode(NotificationSettings.self, from: data)
+            } catch {
+                return defaultNotificationSettings
+            }
+        }
+        set {
+            do {
+                let data = try jsonEncoder.encode(newValue)
+                store.set(data, forKey: AppStorageKeys.notificationSettings)
+            } catch {
+                // Intentionally ignore, keeping the previous stored value.
+            }
+        }
+    }
+
 
     // MARK: Helpers
 
