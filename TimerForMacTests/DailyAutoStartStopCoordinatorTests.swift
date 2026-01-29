@@ -279,14 +279,23 @@ final class DailyAutoStartStopCoordinatorTests: XCTestCase {
 // MARK: - Mocks
 
 private final class MockSettingsStore: SettingsStore {
+    var selectedDayPlanID: UUID?
+    
+    var notificationSettings: NotificationSettings
+    
     var timerTargetMinutes: Int
     var isMinimalModeEnabled: Bool
     var isPreventSleepEnabled: Bool
     var dailySchedule: DailySchedule
 
-    init(timerTargetMinutes: Int, dailySchedule: DailySchedule) {
+    init(
+        timerTargetMinutes: Int,
+        dailySchedule: DailySchedule,
+        notificationSettings: NotificationSettings = .default
+    ) {
         self.timerTargetMinutes = timerTargetMinutes
         self.dailySchedule = dailySchedule
+        self.notificationSettings = notificationSettings
         self.isMinimalModeEnabled = false
         self.isPreventSleepEnabled = false
     }

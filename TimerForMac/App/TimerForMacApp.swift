@@ -9,15 +9,25 @@ import SwiftUI
 
 @main
 struct TimerForMacApp: App {
+
+    // MARK: - Dependencies
+
     private let container = AppContainer()
+
+    // MARK: - Scene
 
     var body: some Scene {
         WindowGroup {
             container.makeTimerRootView()
                 .task {
-                    // Safe: start is idempotent (guarded in AppContainer).
-                    container.startAutoScheduleIfNeeded()
+                    await MainActor.run {
+                        container.startAutoScheduleIfNeeded()
+                    }
                 }
+        }
+
+        Settings {
+            container.makeSettingsView()
         }
     }
 }
