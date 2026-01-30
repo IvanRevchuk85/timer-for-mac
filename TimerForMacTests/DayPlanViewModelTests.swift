@@ -38,7 +38,9 @@ final class DayPlanViewModelTests: XCTestCase {
         init(_ value: TimeInterval) { self.value = value }
     }
     
-    private final class MockSettingsStore: SettingsStore {
+    private final class MockSettingsStore: SettingsStore, @unchecked Sendable {
+        var timerRecoveryState: TimerRecoveryState = .default
+        
         var selectedDayPlanID: UUID?
         var notificationSettings: NotificationSettings = .default
 

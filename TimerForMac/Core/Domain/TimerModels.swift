@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum TimerStatus: Equatable {
+enum TimerStatus: String, Codable, Equatable, Sendable {
     case idle
     case running
     case paused
