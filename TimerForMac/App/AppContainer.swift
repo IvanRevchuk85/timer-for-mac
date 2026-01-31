@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import UserNotifications
 
+@MainActor
 final class AppContainer {
 
     // MARK: - Dependencies
@@ -23,22 +24,25 @@ final class AppContainer {
 
     private let dailyScheduleService = DailyScheduleService()
 
-    @MainActor private var autoStartStopCoordinator: DailyAutoStartStopCoordinator?
-    @MainActor private var mainTimerCoordinator: MainTimerCoordinator?
-    @MainActor private var notificationsCoordinator: TimerNotificationsCoordinator?
+    private var autoStartStopCoordinator: DailyAutoStartStopCoordinator?
+    private var mainTimerCoordinator: MainTimerCoordinator?
+    private var notificationsCoordinator: TimerNotificationsCoordinator?
+    private var recoveryCoordinator: TimerRecoveryCoordinator?
 
-    @MainActor private var didStartAutoSchedule = false
+    private var didStartAutoSchedule = false
 
     // MARK: - Init
 
-    @MainActor
     init() {
         UNUserNotificationCenter.current().delegate = foregroundNotificationPresenter
 
-        self.timerEngine = TimerEngine()
-
+        // English: Settings must be created before the engine to enable persistence + recovery.
+        // Russian: Settings нужно создать до engine, чтобы работали персист и восстановление.
         let defaults = UserDefaultsStore()
-        self.settingsStore = UserDefaultsSettingsStore(store: defaults)
+        let settingsStore = UserDefaultsSettingsStore(store: defaults)
+        self.settingsStore = settingsStore
+
+        self.timerEngine = TimerEngine(settings: settingsStore)
 
         let fileURL = Self.makeDayPlanFileURL()
         self.dayPlanRepository = DayPlanRepository(
@@ -48,11 +52,16 @@ final class AppContainer {
         )
 
         self.notificationService = NotificationService()
+
+        // English: Start lifecycle recovery triggers (launch / wake / active).
+        // Russian: Запускаем триггеры восстановления (launch / wake / active).
+        let recovery = TimerRecoveryCoordinator(timerEngine: timerEngine)
+        self.recoveryCoordinator = recovery
+        recovery.start()
     }
 
     // MARK: - Composition Root
 
-    @MainActor
     func makeTimerRootView() -> some View {
         let timerVM = TimerViewModel(timerEngine: timerEngine, settings: settingsStore)
 
@@ -85,7 +94,6 @@ final class AppContainer {
         }
     }
 
-    @MainActor
     func makeSettingsView() -> some View {
         let vm = SettingsViewModel(
             settingsStore: settingsStore,
@@ -96,7 +104,6 @@ final class AppContainer {
 
     // MARK: - AutoSchedule Public API
 
-    @MainActor
     func startAutoScheduleIfNeeded() {
         guard didStartAutoSchedule == false else { return }
         didStartAutoSchedule = true
@@ -112,7 +119,6 @@ final class AppContainer {
         autoStartStopCoordinator?.start()
     }
 
-    @MainActor
     func stopAutoSchedule() {
         autoStartStopCoordinator?.stop()
         didStartAutoSchedule = false
@@ -120,8 +126,9 @@ final class AppContainer {
 
     // MARK: - Helpers
 
-    /// Must stay non-isolated to avoid `@MainActor () -> TimeInterval` type leaks into domain VMs.
-    private static func elapsedSinceStartOfToday() -> TimeInterval {
+    /// English: Must stay non-isolated to avoid `@MainActor () -> TimeInterval` type leaks into domain VMs.
+    /// Russian: Должна быть nonisolated, чтобы тип `@MainActor () -> TimeInterval` не протекал в доменные VM.
+    nonisolated private static func elapsedSinceStartOfToday() -> TimeInterval {
         let now = Date()
         let start = Calendar.current.startOfDay(for: now)
         return now.timeIntervalSince(start)

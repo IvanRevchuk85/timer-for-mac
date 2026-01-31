@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - SettingsStore
 
-protocol SettingsStore: AnyObject {
+protocol SettingsStore: AnyObject, Sendable {
     var timerTargetMinutes: Int { get set }
     var isMinimalModeEnabled: Bool { get set }
     var isPreventSleepEnabled: Bool { get set }
@@ -18,11 +18,12 @@ protocol SettingsStore: AnyObject {
 
     var selectedDayPlanID: UUID? { get set }
     var notificationSettings: NotificationSettings { get set }
+    var timerRecoveryState: TimerRecoveryState { get set }
 }
 
 // MARK: - UserDefaultsSettingsStore
 
-final class UserDefaultsSettingsStore: SettingsStore {
+final class UserDefaultsSettingsStore: SettingsStore, @unchecked Sendable {
     private let store: UserDefaultsStoring
 
     private let defaultTimerTargetMinutes: Int
@@ -33,6 +34,7 @@ final class UserDefaultsSettingsStore: SettingsStore {
     private let jsonEncoder = JSONEncoder()
     private let jsonDecoder = JSONDecoder()
     private let defaultNotificationSettings: NotificationSettings
+    private let defaultTimerRecoveryState: TimerRecoveryState
 
     init(
         store: UserDefaultsStoring,
@@ -40,7 +42,8 @@ final class UserDefaultsSettingsStore: SettingsStore {
         defaultMinimalMode: Bool = false,
         defaultPreventSleep: Bool = false,
         defaultDailySchedule: DailySchedule = UserDefaultsSettingsStore.makeDefaultDailySchedule(),
-        defaultNotificationSettings: NotificationSettings = .default
+        defaultNotificationSettings: NotificationSettings = .default,
+        defaultTimerRecoveryState: TimerRecoveryState = .default
     ) {
         self.store = store
         self.defaultTimerTargetMinutes = defaultTimerTargetMinutes
@@ -48,6 +51,7 @@ final class UserDefaultsSettingsStore: SettingsStore {
         self.defaultPreventSleep = defaultPreventSleep
         self.defaultDailySchedule = defaultDailySchedule
         self.defaultNotificationSettings = defaultNotificationSettings
+        self.defaultTimerRecoveryState = defaultTimerRecoveryState
     }
 
     // MARK: Timer
@@ -154,7 +158,30 @@ final class UserDefaultsSettingsStore: SettingsStore {
             }
         }
     }
+    
+    // MARK: Timer recovery state
 
+    var timerRecoveryState: TimerRecoveryState {
+        get {
+            guard let data = store.data(forKey: AppStorageKeys.timerRecoveryState) else {
+                return defaultTimerRecoveryState
+            }
+
+            do {
+                return try jsonDecoder.decode(TimerRecoveryState.self, from: data)
+            } catch {
+                return defaultTimerRecoveryState
+            }
+        }
+        set {
+            do {
+                let data = try jsonEncoder.encode(newValue)
+                store.set(data, forKey: AppStorageKeys.timerRecoveryState)
+            } catch {
+                // Intentionally ignore, keeping the previous stored value.
+            }
+        }
+    }
 
     // MARK: Helpers
 

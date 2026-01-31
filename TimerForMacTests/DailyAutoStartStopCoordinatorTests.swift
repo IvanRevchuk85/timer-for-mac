@@ -213,7 +213,7 @@ final class DailyAutoStartStopCoordinatorTests: XCTestCase {
             clock: { clock.now },
             sleeper: sleeper
         )
-        defer { Task { @MainActor in coordinator.stop() } }
+        defer { coordinator.stop() }
 
         coordinator.start()
         _ = try await awaitNonNilDate(from: sleeper)
@@ -278,29 +278,6 @@ final class DailyAutoStartStopCoordinatorTests: XCTestCase {
 
 // MARK: - Mocks
 
-private final class MockSettingsStore: SettingsStore {
-    var selectedDayPlanID: UUID?
-    
-    var notificationSettings: NotificationSettings
-    
-    var timerTargetMinutes: Int
-    var isMinimalModeEnabled: Bool
-    var isPreventSleepEnabled: Bool
-    var dailySchedule: DailySchedule
-
-    init(
-        timerTargetMinutes: Int,
-        dailySchedule: DailySchedule,
-        notificationSettings: NotificationSettings = .default
-    ) {
-        self.timerTargetMinutes = timerTargetMinutes
-        self.dailySchedule = dailySchedule
-        self.notificationSettings = notificationSettings
-        self.isMinimalModeEnabled = false
-        self.isPreventSleepEnabled = false
-    }
-}
-
 private actor MockTimerEngine: TimerEngineProtocol {
     private(set) var startCalls: [TimeInterval?] = []
     private(set) var stopCalls: Int = 0
@@ -313,6 +290,11 @@ private actor MockTimerEngine: TimerEngineProtocol {
     func pause() async {}
     func resume() async {}
     func stop() async { stopCalls += 1 }
+
+    func recoverIfNeeded() async {
+        // English: No-op for these tests.
+        // Russian: Не используется в этих тестах.
+    }
 }
 
 private actor MockSleeper: SleepProviding {
@@ -410,7 +392,7 @@ private extension DailyAutoStartStopCoordinatorTests {
             from: date
         )
     }
-    
+
     func waitUntilSleeping(_ sleeper: MockSleeper, file: StaticString = #filePath, line: UInt = #line) async {
         for _ in 0..<200 {
             if await sleeper.isSleeping { return }
